@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Gift Studio | Custom Frames, Polaroids & Personalized Gifts</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-rose-50/40 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- TOP PROMO BANNER -->
+  <div class="bg-rose-600 text-white text-xs sm:text-sm py-2 px-4 text-center font-medium">
+    🎁 Special Offer: Use code <span class="font-bold underline">WELCOME10</span> for 10% OFF on orders above ₹300!
+  </div>
+
+  <!-- NAVBAR -->
+  <header class="bg-white/90 backdrop-blur sticky top-0 z-30 border-b border-rose-100 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-xl shadow">
+          G
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold text-slate-900 leading-none">The Gift Studio</h1>
+          <p class="text-xs text-slate-500 mt-0.5">Frames • Polaroids • Custom Hampers</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Switch between Store & Admin -->
+        <button onclick="toggleAdminView()" id="navAdminBtn" class="text-xs sm:text-sm px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-100 font-medium transition">
+          ⚙️ Admin Portal
+        </button>
+
+        <!-- Cart Button -->
+        <button onclick="toggleCart(true)" class="relative bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-sm transition">
+          <span>🛒 Cart</span>
+          <span id="cartCountBadge" class="bg-white text-rose-600 px-2 py-0.5 rounded-full text-xs font-bold">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONNECTION STATUS BANNER -->
+  <div id="demoBanner" class="hidden bg-amber-50 border-b border-amber-200 text-amber-800 text-xs py-2 px-4 text-center">
+    ⚡ Running in <strong>Demo Preview Mode</strong>. Paste your Google Apps Script Web App URL in the code to sync live with Google Sheets.
+  </div>
+
+  <!-- ========================================== -->
+  <!-- VIEW 1: CUSTOMER STOREFRONT                -->
+  <!-- ========================================== -->
+  <main id="storeView" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8">
+    
+    <!-- Search & Category Filter -->
+    <div class="flex flex-col sm:flex-row gap-4 justify-between items-center mb-8">
+      <div id="categoryTabs" class="flex flex-wrap gap-2 w-full sm:w-auto">
+        <!-- Populated dynamically -->
+      </div>
+      <div class="w-full sm:w-72">
+        <input 
+          type="text" 
+          id="searchInput" 
+          oninput="renderProducts()" 
+          placeholder="Search frames, polaroids, lamps..." 
+          class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm bg-white"
+        />
+      </div>
+    </div>
+
+    <!-- Active Coupons Strip -->
+    <div id="couponStrip" class="mb-8 flex flex-wrap gap-3"></div>
+
+    <!-- Product Grid -->
+    <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Populated dynamically -->
+    </div>
+  </main>
+
+  <!-- ========================================== -->
+  <!-- VIEW 2: ADMIN PORTAL (INVENTORY & COUPONS) -->
+  <!-- ========================================== -->
+  <section id="adminView" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-6">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Admin Inventory & Coupon Portal</h2>
+          <p class="text-sm text-slate-500">Changes made here update your Google Sheet automatically.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <input 
+            type="password" 
+            id="adminPinInput" 
+            placeholder="Enter Admin PIN (default: 1234)" 
+            class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+          />
+          <button onclick="loadStoreData()" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-900">
+            🔄 Sync Sheet
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Form 1: Add New Product -->
+        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+          <h3 class="font-bold text-base mb-4 text-slate-800">➕ Add New Product</h3>
+          <form onsubmit="handleAddProduct(event)" class="space-y-3 text-sm">
+            <input type="text" id="pName" required placeholder="Product Title (e.g. Spotify Frame)" class="w-full px-3 py-2 rounded-lg border border-slate-300" />
+            <div class="grid grid-cols-2 gap-2">
+              <input type="text" id="pCat" required placeholder="Category (e.g. Frames)" class="w-full px-3 py-2 rounded-lg border border-slate-300" />
+              <input type="number" id="pPrice" required placeholder="Price (₹)" class="w-full px-3 py-2 rounded-lg border border-slate-300" />
+            </div>
+            <input type="number" id="pStock" required placeholder="Initial Stock Quantity" class="w-full px-3 py-2 rounded-lg border border-slate-300" />
+            <input type="url" id="pImg" required placeholder="Image URL (https://...)" class="w-full px-3 py-2 rounded-lg border border-slate-300" />
+            <textarea id="pDesc" rows="2" placeholder="Short product description..." class="w-full px-3 py-2 rounded-lg border border-slate-300"></textarea>
+            <button type="submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 rounded-lg transition">
+              Save Product to Sheet
+            </button>
+          </form>
+        </div>
+
+        <!-- Form 2: Create Discount Coupon -->
+        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+          <h3 class="font-bold text-base mb-4 text-slate-800">🎟️ Create Discount Coupon</h3>
+          <form onsubmit="handleAddCoupon(event)" class="space-y-3 text-sm mb-6">
+            <input type="text" id="cCode" required placeholder="Coupon Code (e.g. FESTIVE20)" class="w-full px-3 py-2 rounded-lg border border-slate-300 uppercase" />
+            <div class="grid grid-cols-2 gap-2">
+              <select id="cType" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                <option value="PERCENT">Percentage (%)</option>
+                <option value="FLAT">Flat Discount (₹)</option>
+              </select>
+              <input type="number" id="cVal" required placeholder="Discount Value" class="w-full px-3 py-2 rounded-lg border border-slate-300" />
+            </div>
+            <input type="number" id="cMin" required placeholder="Minimum Order Amount (₹)" class="w-full px-3 py-2 rounded-lg border border-slate-300" />
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition">
+              Create Coupon
+            </button>
+          </form>
+
+          <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-500 mb-2">Active Coupons</h4>
+          <div id="adminCouponList" class="space-y-2 max-h-44 overflow-y-auto"></div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col justify-between">
+          <div>
+            <h3 class="font-bold text-base mb-4 text-slate-800">📊 Inventory Summary</h3>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div class="bg-white p-4 rounded-xl border border-slate-200">
+                <p class="text-xs text-slate-500">Total Products</p>
+                <p id="statTotalProducts" class="text-2xl font-bold text-slate-800">0</p>
+              </div>
+              <div class="bg-white p-4 rounded-xl border border-slate-200">
+                <p class="text-xs text-slate-500">Out of Stock</p>
+                <p id="statOutOfStock" class="text-2xl font-bold text-rose-600">0</p>
+              </div>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              💡 <strong>Tip:</strong> Enter your Admin PIN at the top right before adding products, updating stock, or creating coupons.
+            </p>
+          </div>
+          <div id="adminStatusMsg" class="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3 hidden"></div>
+        </div>
+      </div>
+
+      <!-- Manage Existing Stock Table -->
+      <div class="mt-8">
+        <h3 class="font-bold text-base mb-4 text-slate-800">📦 Live Stock & Price Manager</h3>
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
+              <tr>
+                <th class="p-3">ID</th>
+                <th class="p-3">Product</th>
+                <th class="p-3">Category</th>
+                <th class="p-3">Price (₹)</th>
+                <th class="p-3">Stock Qty</th>
+                <th class="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminStockTable" class="divide-y divide-slate-200"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================== -->
+  <!-- SLIDE-OVER CART & WHATSAPP CHECKOUT        -->
+  <!-- ========================================== -->
+  <div id="cartModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden justify-end">
+    <div class="bg-white w-full max-w-md h-full flex flex-col shadow-2xl overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-900">Your Gift Cart</h2>
+        <button onclick="toggleCart(false)" class="text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
+      </div>
+
+      <!-- Cart Items + Coupon + Customer Form -->
+      <div class="flex-1 overflow-y-auto p-5 space-y-6">
+        <!-- Items List -->
+        <div id="cartItemsList" class="space-y-3"></div>
+
+        <!-- Coupon Box -->
+        <div class="bg-rose-50/70 p-3.5 rounded-xl border border-rose-200">
+          <label class="block text-xs font-bold uppercase text-rose-800 mb-1.5">Have a Discount Coupon?</label>
+          <div class="flex gap-2">
+            <input 
+              type="text" 
+              id="couponInput" 
+              placeholder="Enter code (e.g. WELCOME10)" 
+              class="flex-1 px-3 py-2 rounded-lg border border-rose-200 text-sm uppercase bg-white focus:outline-none"
+            />
+            <button onclick="applyCoupon()" class="bg-rose-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-rose-700">
+              Apply
+            </button>
+          </div>
+          <p id="couponFeedback" class="text-xs mt-1.5 font-medium"></p>
+        </div>
+
+        <!-- Price Summary -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-sm">
+          <div class="flex justify-between text-slate-600">
+            <span>Subtotal</span>
+            <span id="summarySubtotal">₹0</span>
+          </div>
+          <div class="flex justify-between text-emerald-600 font-medium">
+            <span>Coupon Discount</span>
+            <span id="summaryDiscount">-₹0</span>
+          </div>
+          <div class="border-t border-slate-200 pt-2 flex justify-between font-bold text-base text-slate-900">
+            <span>Total Payable</span>
+            <span id="summaryTotal">₹0</span>
+          </div>
+        </div>
+
+        <!-- Customer Details for WhatsApp Order -->
+        <form id="checkoutForm" onsubmit="placeOrderOnWhatsApp(event)" class="space-y-3 text-sm">
+          <h3 class="font-bold text-slate-800">Delivery & Customization Details</h3>
+          <input type="text" id="custName" required placeholder="Your Full Name *" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300" />
+          <input type="tel" id="custPhone" required placeholder="Your WhatsApp Number *" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300" />
+          <textarea id="custAddress" required rows="2" placeholder="Complete Delivery Address with Pincode *" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300"></textarea>
+          <textarea id="custNote" rows="2" placeholder="Customization Note (Names for frame, message on card, etc.)" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300"></textarea>
+
+          <button 
+            type="submit" 
+            id="checkoutBtn"
+            class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-base"
+          >
+            <span>💬 Confirm Order on WhatsApp</span>
+          </button>
+          <p class="text-[11px] text-center text-slate-500">
+            Stock will be reserved & you will be redirected to WhatsApp for manual UPI payment confirmation.
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- APPLICATION LOGIC                          -->
+  <!-- ========================================== -->
+  <script>
+    // 1. PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL & WHATSAPP NUMBER HERE:
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQ_iQVSfTlj7Hnvl_jjr7AD7xKH43PO1ySZZTC_0uuJrrXAhTxa2RKWA8cpgCqX-Ui_A/exec"; 
+    const SHOP_WHATSAPP_NUMBER = "919076420108"; // Replace with your WhatsApp number (with 91 country code)
+
+    // State
+    let products = [];
+    let coupons = [];
+    let cart = [];
+    let selectedCategory = "All";
+    let appliedCoupon = null;
+
+    // Fallback Sample Data (Used if SCRIPT_URL isn't set yet)
+    const SAMPLE_PRODUCTS = [
+      { ID: "P101", Name: "Custom Wooden Engraved Frame", Category: "Frames", Price: 599, Stock: 15, ImageURL: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=600", Description: "Personalized wooden photo frame with custom engraving." },
+      { ID: "P102", Name: "Retro Polaroid Photo Prints (Set of 20)", Category: "Polaroids", Price: 249, Stock: 40, ImageURL: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=600", Description: "High-gloss vintage style mini polaroid prints with custom captions." },
+      { ID: "P103", Name: "Acrylic LED Spotify Night Lamp", Category: "LED Gifts", Price: 799, Stock: 8, ImageURL: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=600", Description: "Warm glowing acrylic plaque customized with your photo & song code." },
+      { ID: "P104", Name: "Degree Convocation Frame (A4)", Category: "Frames", Price: 699, Stock: 0, ImageURL: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600", Description: "Premium matte black graduation certificate & photo frame." }
+    ];
+
+    const SAMPLE_COUPONS = [
+      { Code: "WELCOME10", Type: "PERCENT", Value: 10, MinOrder: 300, Active: true },
+      { Code: "GIFT100", Type: "FLAT", Value: 100, MinOrder: 799, Active: true }
+    ];
+
+    const isLiveMode = () => SCRIPT_URL && SCRIPT_URL !== "YOUR_GOOGLE_SCRIPT_WEB_APP_URL";
+
+    // Initialize Store
+    window.addEventListener("DOMContentLoaded", () => {
+      loadStoreData();
+    });
+
+    async function loadStoreData() {
+      if (!isLiveMode()) {
+        document.getElementById("demoBanner").classList.remove("hidden");
+        products = [...SAMPLE_PRODUCTS];
+        coupons = [...SAMPLE_COUPONS];
+        renderAll();
+        return;
+      }
+
+      try {
+        const res = await fetch(SCRIPT_URL);
+        const data = await res.json();
+        if (data.status === "success") {
+          products = data.products;
+          coupons = data.coupons.filter(c => String(c.Active).toLowerCase() === "true");
+          renderAll();
+        }
+      } catch (err) {
+        console.error("Error syncing sheet:", err);
+        alert("Could not load data from Google Sheet. Check your Web App URL and permissions.");
+      }
+    }
+
+    function renderAll() {
+      renderCategories();
+      renderCouponStrip();
+      renderProducts();
+      renderAdminPanel();
+      updateCartUI();
+    }
+
+    // Render Category Pills
+    function renderCategories() {
+      const cats = ["All", ...new Set(products.map(p => p.Category).filter(Boolean))];
+      const container = document.getElementById("categoryTabs");
+      container.innerHTML = cats.map(c => `
+        <button 
+          onclick="setCategory('${c}')" 
+          class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+            selectedCategory === c 
+              ? 'bg-rose-600 text-white shadow-xs' 
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-rose-50'
+          }"
+        >
+          ${c}
+        </button>
+      `).join("");
+    }
+
+    function setCategory(cat) {
+      selectedCategory = cat;
+      renderCategories();
+      renderProducts();
+    }
+
+    // Render Active Coupons Strip
+    function renderCouponStrip() {
+      const strip = document.getElementById("couponStrip");
+      if (!coupons.length) {
+        strip.innerHTML = "";
+        return;
+      }
+      strip.innerHTML = coupons.map(c => {
+        const benefit = c.Type === "PERCENT" ? `${c.Value}% OFF` : `₹${c.Value} OFF`;
+        return `
+          <div class="bg-white border border-dashed border-rose-300 rounded-xl px-3.5 py-2 flex items-center gap-2 text-xs shadow-2xs">
+            <span class="bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded">${c.Code}</span>
+            <span class="text-slate-600 font-medium">${benefit} on orders above ₹${c.MinOrder}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Render Storefront Product Cards
+    function renderProducts() {
+      const query = document.getElementById("searchInput").value.toLowerCase();
+      const grid = document.getElementById("productGrid");
+
+      const filtered = products.filter(p => {
+        const matchesCat = selectedCategory === "All" || p.Category === selectedCategory;
+        const matchesQuery = String(p.Name).toLowerCase().includes(query) || String(p.Description).toLowerCase().includes(query);
+        return matchesCat && matchesQuery;
+      });
+
+      if (!filtered.length) {
+        grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400">No gifts found matching your filter.</div>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(p => {
+        const stock = Number(p.Stock);
+        const outOfStock = stock <= 0;
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md transition flex flex-col">
+            <div class="relative h-56 bg-slate-100">
+              <img src="${p.ImageURL}" alt="${p.Name}" class="w-full h-full object-cover" />
+              <span class="absolute top-3 left-3 bg-white/90 backdrop-blur px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700">
+                ${p.Category}
+              </span>
+              <span class="absolute top-3 right-3 px-2.5 py-1 rounded-lg text-xs font-bold ${
+                outOfStock ? 'bg-rose-600 text-white' : stock <= 5 ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
+              }">
+                ${outOfStock ? 'Out of Stock' : `\${stock} in stock`}
+              </span>
+            </div>
+            <div class="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 class="font-bold text-base text-slate-900">${p.Name}</h3>
+                <p class="text-xs text-slate-500 mt-1 line-clamp-2">${p.Description || ''}</p>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span class="text-lg font-extrabold text-slate-900">₹${p.Price}</span>
+                <button 
+                  onclick="addToCart('${p.ID}')" 
+                  ${outOfStock ? 'disabled' : ''}
+                  class="px-4 py-2 rounded-xl text-xs font-bold transition ${
+                    outOfStock 
+                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
+                      : 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs'
+                  }"
+                >
+                  ${outOfStock ? 'Sold Out' : '+ Add to Cart'}
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Cart Operations
+    function addToCart(productId) {
+      const prod = products.find(p => String(p.ID) === String(productId));
+      if (!prod) return;
+
+      const existing = cart.find(item => String(item.id) === String(productId));
+      const currentQty = existing ? existing.qty : 0;
+
+      if (currentQty + 1 > Number(prod.Stock)) {
+        alert(`Only ${prod.Stock} units available in stock!`);
+        return;
+      }
+
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        cart.push({ id: prod.ID, name: prod.Name, price: Number(prod.Price), qty: 1 });
+      }
+      updateCartUI();
+    }
+
+    function changeQty(productId, delta) {
+      const itemIndex = cart.findIndex(i => String(i.id) === String(productId));
+      if (itemIndex === -1) return;
+
+      const prod = products.find(p => String(p.ID) === String(productId));
+      const newQty = cart[itemIndex].qty + delta;
+
+      if (newQty <= 0) {
+        cart.splice(itemIndex, 1);
+      } else if (prod && newQty > Number(prod.Stock)) {
+        alert(`Maximum available stock is ${prod.Stock}`);
+        return;
+      } else {
+        cart[itemIndex].qty = newQty;
+      }
+      updateCartUI();
+    }
+
+    function applyCoupon() {
+      const input = document.getElementById("couponInput").value.trim().toUpperCase();
+      const feedback = document.getElementById("couponFeedback");
+      const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+
+      const found = coupons.find(c => String(c.Code).toUpperCase() === input);
+      if (!found) {
+        appliedCoupon = null;
+        feedback.textContent = "❌ Invalid or expired coupon code.";
+        feedback.className = "text-xs mt-1.5 font-medium text-rose-600";
+        updateCartUI();
+        return;
+      }
+
+      if (subtotal < Number(found.MinOrder)) {
+        appliedCoupon = null;
+        feedback.textContent = `⚠️ Add items worth ₹${Number(found.MinOrder) - subtotal} more to use ${found.Code}.`;
+        feedback.className = "text-xs mt-1.5 font-medium text-amber-600";
+        updateCartUI();
+        return;
+      }
+
+      appliedCoupon = found;
+      feedback.textContent = `✅ Coupon ${found.Code} applied!`;
+      feedback.className = "text-xs mt-1.5 font-medium text-emerald-600";
+      updateCartUI();
+    }
+
+    function getCartTotals() {
+      const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+      let discount = 0;
+
+      if (appliedCoupon && subtotal >= Number(appliedCoupon.MinOrder)) {
+        if (appliedCoupon.Type === "PERCENT") {
+          discount = Math.round((subtotal * Number(appliedCoupon.Value)) / 100);
+        } else {
+          discount = Number(appliedCoupon.Value);
+        }
+      } else {
+        appliedCoupon = null;
+      }
+
+      const finalTotal = Math.max(0, subtotal - discount);
+      return { subtotal, discount, finalTotal };
+    }
+
+    function updateCartUI() {
+      const totalItems = cart.reduce((sum, i) => sum + i.qty, 0);
+      document.getElementById("cartCountBadge").textContent = totalItems;
+
+      const list = document.getElementById("cartItemsList");
+      if (!cart.length) {
+        list.innerHTML = `<p class="text-sm text-slate-400 text-center py-6">Your gift cart is empty.</p>`;
+      } else {
+        list.innerHTML = cart.map(item => `
+          <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <div>
+              <p class="font-semibold text-sm text-slate-800">${item.name}</p>
+              <p class="text-xs text-slate-500">₹${item.price} × ${item.qty} = <strong>₹${item.price * item.qty}</strong></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="changeQty('${item.id}', -1)" class="w-7 h-7 rounded-lg bg-white border border-slate-300 font-bold text-slate-700">-</button>
+              <span class="text-xs font-bold w-4 text-center">${item.qty}</span>
+              <button onclick="changeQty('${item.id}', 1)" class="w-7 h-7 rounded-lg bg-white border border-slate-300 font-bold text-slate-700">+</button>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      const { subtotal, discount, finalTotal } = getCartTotals();
+      document.getElementById("summarySubtotal").textContent = `₹${subtotal}`;
+      document.getElementById("summaryDiscount").textContent = `-₹${discount}`;
+      document.getElementById("summaryTotal").textContent = `₹${finalTotal}`;
+    }
+
+    function toggleCart(show) {
+      const modal = document.getElementById("cartModal");
+      if (show) {
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      } else {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+    }
+
+    // Checkout: Deduct Stock in Sheet + Redirect to WhatsApp for Manual Payment
+    async function placeOrderOnWhatsApp(e) {
+      e.preventDefault();
+      if (!cart.length) {
+        alert("Please add at least one gift item to your cart!");
+        return;
+      }
+
+      const btn = document.getElementById("checkoutBtn");
+      btn.disabled = true;
+      btn.textContent = "Processing & Reserving Stock...";
+
+      const customerName = document.getElementById("custName").value.trim();
+      const phone = document.getElementById("custPhone").value.trim();
+      const address = document.getElementById("custAddress").value.trim();
+      const customNote = document.getElementById("custNote").value.trim();
+      const { subtotal, discount, finalTotal } = getCartTotals();
+      const couponCode = appliedCoupon ? appliedCoupon.Code : "NONE";
+
+      let orderId = "ORD-" + Math.floor(100000 + Math.random() * 900000);
+
+      try {
+        if (isLiveMode()) {
+          // Send with text/plain to prevent CORS preflight error on Google Apps Script
+          const response = await fetch(SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              action: "placeOrder",
+              customerName,
+              phone,
+              address,
+              customNote,
+              items: cart,
+              subtotal,
+              couponCode,
+              discount,
+              finalTotal
+            })
+          });
+          const resData = await response.json();
+          if (resData.status !== "success") {
+            alert(resData.message || "Could not place order.");
+            btn.disabled = false;
+            btn.textContent = "💬 Confirm Order on WhatsApp";
+            return;
+          }
+          orderId = resData.orderId;
+        } else {
+          // Deduct locally in demo mode
+          cart.forEach(item => {
+            const prod = products.find(p => String(p.ID) === String(item.id));
+            if (prod) prod.Stock = Math.max(0, Number(prod.Stock) - item.qty);
+          });
+        }
+
+        // Format WhatsApp Order Message
+        const itemLines = cart.map((i, idx) => `${idx + 1}. ${i.name} (x${i.qty}) - ₹${i.price * i.qty}`).join("\n");
+        const waText = 
+`🎁 *NEW GIFT ORDER: ${orderId}*
+------------------------------
+*Customer:* ${customerName}
+*Phone:* ${phone}
+*Address:* ${address}
+*Custom Note:* ${customNote || "None"}
+
+*Order Items:*
+${itemLines}
+------------------------------
+*Subtotal:* ₹${subtotal}
+*Coupon (${couponCode}):* -₹${discount}
+*Final Payable Amount:* *₹${finalTotal}*
+------------------------------
+Hi! I would like to confirm this order. Please share the UPI QR / payment details so I can complete the payment.`;
+
+        const waUrl = `https://wa.me/${SHOP_WHATSAPP_NUMBER}?text=${encodeURIComponent(waText)}`;
+        
+        // Reset Cart & Refresh Inventory
+        cart = [];
+        appliedCoupon = null;
+        document.getElementById("checkoutForm").reset();
+        toggleCart(false);
+        await loadStoreData();
+
+        // Open WhatsApp
+        window.open(waUrl, "_blank");
+
+      } catch (err) {
+        alert("Network error while placing order: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "💬 Confirm Order on WhatsApp";
+      }
+    }
+
+    // ==========================================
+    // ADMIN PORTAL FUNCTIONS
+    // ==========================================
+    function toggleAdminView() {
+      const store = document.getElementById("storeView");
+      const admin = document.getElementById("adminView");
+      const btn = document.getElementById("navAdminBtn");
+
+      if (admin.classList.contains("hidden")) {
+        admin.classList.remove("hidden");
+        store.classList.add("hidden");
+        btn.textContent = "🛍️ Back to Shop";
+        renderAdminPanel();
+      } else {
+        admin.classList.add("hidden");
+        store.classList.remove("hidden");
+        btn.textContent = "⚙️ Admin Portal";
+      }
+    }
+
+    function showAdminStatus(msg) {
+      const box = document.getElementById("adminStatusMsg");
+      box.textContent = msg;
+      box.classList.remove("hidden");
+      setTimeout(() => box.classList.add("hidden"), 4000);
+    }
+
+    function renderAdminPanel() {
+      document.getElementById("statTotalProducts").textContent = products.length;
+      document.getElementById("statOutOfStock").textContent = products.filter(p => Number(p.Stock) <= 0).length;
+
+      // Render Stock Table
+      const tbody = document.getElementById("adminStockTable");
+      tbody.innerHTML = products.map(p => `
+        <tr class="hover:bg-slate-50">
+          <td class="p-3 font-mono text-xs text-slate-500">${p.ID}</td>
+          <td class="p-3 font-semibold text-slate-800">${p.Name}</td>
+          <td class="p-3 text-slate-600">${p.Category}</td>
+          <td class="p-3">
+            <input type="number" id="price-${p.ID}" value="${p.Price}" class="w-24 px-2 py-1 border border-slate-300 rounded text-sm" />
+          </td>
+          <td class="p-3">
+            <input type="number" id="stock-${p.ID}" value="${p.Stock}" class="w-20 px-2 py-1 border border-slate-300 rounded text-sm" />
+          </td>
+          <td class="p-3 text-right space-x-2">
+            <button onclick="handleUpdateStock('${p.ID}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-xs font-semibold">
+              Update
+            </button>
+            <button onclick="handleDeleteProduct('${p.ID}')" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2.5 py-1 rounded text-xs font-semibold">
+              Delete
+            </button>
+          </td>
+        </tr>
+      `).join("");
+
+      // Render Admin Coupons
+      const cList = document.getElementById("adminCouponList");
+      cList.innerHTML = coupons.map(c => `
+        <div class="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200 text-xs">
+          <div>
+            <span class="font-bold text-indigo-700">${c.Code}</span>
+            <span class="text-slate-500 ml-1">(${c.Type === 'PERCENT' ? c.Value + '%' : '₹' + c.Value} OFF, Min ₹${c.MinOrder})</span>
+          </div>
+          <button onclick="handleDeleteCoupon('${c.Code}')" class="text-rose-600 hover:underline font-semibold">Remove</button>
+        </div>
+      `).join("");
+    }
+
+    async function handleAddProduct(e) {
+      e.preventDefault();
+      const pin = document.getElementById("adminPinInput").value;
+      const payload = {
+        action: "addProduct",
+        pin,
+        name: document.getElementById("pName").value.trim(),
+        category: document.getElementById("pCat").value.trim(),
+        price: Number(document.getElementById("pPrice").value),
+        stock: Number(document.getElementById("pStock").value),
+        imageUrl: document.getElementById("pImg").value.trim(),
+        description: document.getElementById("pDesc").value.trim()
+      };
+
+      if (!isLiveMode()) {
+        products.push({
+          ID: "P" + Math.floor(1000 + Math.random() * 9000),
+          Name: payload.name,
+          Category: payload.category,
+          Price: payload.price,
+          Stock: payload.stock,
+          ImageURL: payload.imageUrl,
+          Description: payload.description
+        });
+        e.target.reset();
+        renderAll();
+        showAdminStatus("✅ Product added (Demo Mode)!");
+        return;
+      }
+
+      const res = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (data.status === "success") {
+        e.target.reset();
+        await loadStoreData();
+        showAdminStatus("✅ Product added to Google Sheet!");
+      } else {
+        alert(data.message);
+      }
+    }
+
+    async function handleUpdateStock(id) {
+      const pin = document.getElementById("adminPinInput").value;
+      const price = Number(document.getElementById(`price-${id}`).value);
+      const stock = Number(document.getElementById(`stock-${id}`).value);
+
+      if (!isLiveMode()) {
+        const prod = products.find(p => String(p.ID) === String(id));
+        if (prod) { prod.Price = price; prod.Stock = stock; }
+        renderAll();
+        showAdminStatus(`✅ Updated ${id} (Demo Mode)`);
+        return;
+      }
+
+      const res = await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "updateStock", pin, id, price, stock })
+      });
+      const data = await res.json();
+      if (data.status === "success") {
+        await loadStoreData();
+        showAdminStatus(`✅ Stock & price synced for ${id}!`);
+      } else {
+        alert(data.message);
+      }
+    }
+
+    async function handleDeleteProduct(id) {
+      if (!confirm("Delete this product from inventory?")) return;
+      const pin = document.getElementById("adminPinInput").value;
+
+      if (!isLiveMode()) {
+        products = products.filter(p => String(p.ID) !== String(id));
+        renderAll();
+        return;
+      }
+
+      const res = await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "deleteProduct", pin, id })
+      });
+      const data = await res.json();
+      if (data.status === "success") {
+        await loadStoreData();
+        showAdminStatus("🗑️ Product removed.");
+      } else {
+        alert(data.message);
+      }
+    }
+
+    async function handleAddCoupon(e) {
+      e.preventDefault();
+      const pin = document.getElementById("adminPinInput").value;
+      const payload = {
+        action: "addCoupon",
+        pin,
+        code: document.getElementById("cCode").value.trim().toUpperCase(),
+        type: document.getElementById("cType").value,
+        value: Number(document.getElementById("cVal").value),
+        minOrder: Number(document.getElementById("cMin").value)
+      };
+
+      if (!isLiveMode()) {
+        coupons.push({ Code: payload.code, Type: payload.type, Value: payload.value, MinOrder: payload.minOrder, Active: true });
+        e.target.reset();
+        renderAll();
+        showAdminStatus("🎟️ Coupon created (Demo Mode)!");
+        return;
+      }
+
+      const res = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (data.status === "success") {
+        e.target.reset();
+        await loadStoreData();
+        showAdminStatus("🎟️ Coupon saved to Google Sheet!");
+      } else {
+        alert(data.message);
+      }
+    }
+
+    async function handleDeleteCoupon(code) {
+      const pin = document.getElementById("adminPinInput").value;
+      if (!isLiveMode()) {
+        coupons = coupons.filter(c => c.Code !== code);
+        renderAll();
+        return;
+      }
+
+      const res = await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "deleteCoupon", pin, code })
+      });
+      const data = await res.json();
+      if (data.status === "success") {
+        await loadStoreData();
+        showAdminStatus("🗑️ Coupon deleted.");
+      } else {
+        alert(data.message);
+      }
+    }
+  </script>
+</body>
+</html>
